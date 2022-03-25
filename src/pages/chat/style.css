@@ -55,7 +55,7 @@ main {
   flex: 1;
   overflow: auto;
   background: #fff;
-  padding: 10px 10px 5px;
+  padding: 10px;
 }
 
 .user-container {
@@ -183,13 +183,24 @@ main {
   box-sizing: border-box;
 }
 
-.msg {
-  margin-bottom: 6px;
-  font-size: 14px;
+.msg-wrapper {
+  margin-bottom: 3px;
 }
 
-.msg:last-child {
+.msg-wrapper:last-child {
   margin-bottom: 0;
+}
+
+.msg {
+  font-size: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 6px;
+}
+
+.msg:hover {
+  background: #f4f4f4;
 }
 
 .msg .msg-author {
@@ -199,7 +210,7 @@ main {
 }
 
 .msg .msg-content {
-  margin: 0 0 6px 12px;
+  margin-left: 12px;
 }
 
 .msg .msg-content p {
@@ -208,6 +219,25 @@ main {
 
 .msg .msg-content img {
   max-width: 190px;
+}
+
+.reaction-button {
+  display: none;
+  cursor: pointer;
+  color: #555;
+  transition: 0.3s all;
+  border: none;
+  background: none;
+}
+
+.msg:hover .reaction-button {
+  display: block;
+}
+
+.reaction-button:hover,
+.reaction-button.is-liked-true {
+  display: block;
+  color: red;
 }
 
 .loading-container {

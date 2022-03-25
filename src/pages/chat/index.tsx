@@ -9,6 +9,7 @@ import React, {
 } from 'react';
 import { LiveChat } from '@arena-im/chat-sdk/dist/live-chat/live-chat';
 import { ChatMessage } from '@arena-im/chat-types/dist/chat-message';
+import { MessageReaction } from '@arena-im/chat-types';
 import avatarImg from '../../assets/user-avatar.png';
 import msgPanelImg from '../../assets/new-message-bar.png';
 import tiltIcon from '../../assets/icons/tilt.png';
@@ -70,7 +71,7 @@ const Chat = () => {
 
   const handleUpdateUserName = async () => {
     await arenaChat.setUser({
-      id: userName,
+      id: `${userName}-arena`,
       name: userName,
       image: '',
     });
@@ -101,6 +102,72 @@ const Chat = () => {
     }
   };
 
+  const handleLikeMsg = async (id: string) => {
+    if (mainChannel) {
+      const reactionType = 'love';
+
+      const reaction: MessageReaction = {
+        type: reactionType,
+        messageID: id,
+      };
+
+      mainChannel.sendReaction(reaction);
+      const newMessages = messages.map((m) => {
+        if (m.key === id) {
+          return {
+            ...m,
+            currentUserReactions: { love: true },
+          };
+        }
+        return m;
+      });
+      setMessages(newMessages);
+    }
+  };
+
+  const handleDislikeMsg = async (id: string) => {
+    if (mainChannel) {
+      const reactionType = 'love';
+
+      const reaction: MessageReaction = {
+        type: reactionType,
+        messageID: id,
+      };
+
+      mainChannel.deleteReaction(reaction);
+      const newMessages = messages.map((m) => {
+        if (m.key === id) {
+          return {
+            ...m,
+            currentUserReactions: { love: false },
+          };
+        }
+        return m;
+      });
+      setMessages(newMessages);
+    }
+  };
+
+  const userLikedMessage = (id: string) => {
+    const targetMsg = messages.find((m) => m.key === id);
+    // FIXME: The following object property is return undefined
+    // even when it exists
+    const isLiked = targetMsg?.currentUserReactions?.love;
+    if (isLiked) {
+      return true;
+    }
+
+    return false;
+  };
+
+  const handleToggleLikeMsg = (id: string) => {
+    if (userLikedMessage(id)) {
+      handleDislikeMsg(id);
+    } else {
+      handleLikeMsg(id);
+    }
+  };
+
   const stringToColor = (string: string) => {
     const stringUniqueHash = [...string].reduce(
       (acc, char) => char.charCodeAt(0) + ((acc << 5) - acc), // eslint-disable-line no-bitwise
@@ -121,7 +188,8 @@ const Chat = () => {
 
   useEffect(() => {
     fetchChat();
-    setUserName('Bubble');
+    const chosenUsername = prompt('Welcome! Please, enter your username:'); // eslint-disable-line no-alert
+    setUserName(chosenUsername || 'Unamed-user-2139');
     inputRef.current?.focus();
   }, []);
 
@@ -155,24 +223,39 @@ const Chat = () => {
             ) : (
               <div className="messages-container" ref={chatRef}>
                 {messages.map((m) => (
-                  <div key={m.key}>
+                  <div className="msg-wrapper" key={m.key}>
                     {/* Verify 'message' attr existence, because it's not present in POLL type */}
                     {m.message && (
                       <div className="msg">
-                        <p className="msg-author">
-                          {m.sender.displayName} says:
-                        </p>
-                        <div className="msg-content">
-                          <p
-                            style={{
-                              color: stringToColor(m.sender.displayName || ''),
-                            }}
-                          >
-                            {m.message.text}
+                        <div>
+                          <p className="msg-author">
+                            {m.sender.displayName} says:
                           </p>
-                          {m.message.media && (
-                            <img src={m.message.media.url} alt="" />
-                          )}
+                          <div className="msg-content">
+                            <p
+                              style={{
+                                color: stringToColor(
+                                  m.sender.displayName || ''
+                                ),
+                              }}
+                            >
+                              {m.message.text}
+                            </p>
+                            {m.message.media && (
+                              <img src={m.message.media.url} alt="" />
+                            )}
+                          </div>
+                        </div>
+                        <div className="msg-reaction">
+                          <button
+                            className={`reaction-button is-liked-${userLikedMessage(
+                              m.key
+                            )}`}
+                            type="button"
+                            onClick={() => handleToggleLikeMsg(m.key)}
+                          >
+                            ♥
+                          </button>
                         </div>
                       </div>
                     )}
