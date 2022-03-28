@@ -3,33 +3,30 @@ import ArenaChat from '@arena-im/chat-sdk';
 import React, {
   ChangeEvent,
   KeyboardEvent,
+  useCallback,
   useEffect,
   useRef,
   useState,
 } from 'react';
-import { LiveChat } from '@arena-im/chat-sdk/dist/live-chat/live-chat';
 import { ChatMessage } from '@arena-im/chat-types/dist/chat-message';
 import { MessageReaction } from '@arena-im/chat-types';
+import { Channel } from '@arena-im/chat-sdk/dist/channel/channel';
 import avatarImg from '../../assets/user-avatar.png';
 import msgPanelImg from '../../assets/new-message-bar.png';
 import tiltIcon from '../../assets/icons/tilt.png';
 
+const CHAT_SLUG = 'intibia';
+const CHAT_CHANNEL_ID = 'intibia-global';
+
 const Chat = () => {
   const chatRef = useRef<null | HTMLDivElement>(null);
   const inputRef = useRef<null | HTMLTextAreaElement>(null);
-  const [chat, setChat] = useState<LiveChat>();
+  const mainChannelRef = useRef<null | Channel>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loadingChannelMessages, setLoadingChannelMessages] = useState(false);
   const [loadingSendMessage, setLoadingSendMessage] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   const [userName, setUserName] = useState('');
-  const arenaChat = new ArenaChat('intibia');
-
-  const fetchChat = async () => {
-    setLoading(true);
-    const liveChat = await arenaChat.getLiveChat('intibia-global');
-    setChat(liveChat);
-  };
 
   const scrollMessagesToBottom = () => {
     if (chatRef.current) {
@@ -37,61 +34,84 @@ const Chat = () => {
     }
   };
 
-  const fetchMessages = async () => {
-    setLoading(true);
-    const recentMessages = await chat?.getMainChannel().loadRecentMessages(20);
-    if (recentMessages) {
+  const handleLoadMessages = useCallback(async () => {
+    if (mainChannelRef.current) {
+      setLoadingChannelMessages(true);
+      const recentMessages = await mainChannelRef.current.loadRecentMessages(
+        20
+      );
       setMessages(recentMessages);
-      setTimeout(() => {
-        scrollMessagesToBottom();
-      }, 300);
     }
-    setLoading(false);
-  };
+  }, []);
+
+  const startListeners = useCallback(() => {
+    if (mainChannelRef.current) {
+      mainChannelRef.current.onMessageReceived((message) => {
+        setMessages((oldValues) => [...oldValues, message]);
+        scrollMessagesToBottom();
+      });
+
+      mainChannelRef.current.onMessageModified((modifiedMsg) => {
+        setMessages((oldValues) =>
+          oldValues.map((m) => (m.key === modifiedMsg.key ? modifiedMsg : m))
+        );
+      });
+
+      mainChannelRef.current.onMessageDeleted((message) => {
+        setMessages((oldValues) =>
+          oldValues.filter((item) => message.key !== item.key)
+        );
+      });
+    }
+  }, []);
+
+  const removeListeners = useCallback(() => {
+    mainChannelRef.current?.offAllListeners();
+  }, []);
+
+  const connectChat = useCallback(async (username: string) => {
+    try {
+      const arenaChat = new ArenaChat(CHAT_SLUG);
+      await arenaChat.setUser({
+        id: `${username}-arena`,
+        name: username,
+        image: '',
+      });
+
+      const liveChatConnection = await arenaChat.getLiveChat(CHAT_CHANNEL_ID);
+      mainChannelRef.current = liveChatConnection.getMainChannel();
+
+      await handleLoadMessages();
+      startListeners();
+    } catch (err) {
+      console.error('Error (connect chat):', err); // eslint-disable-line no-console
+      alert('Error to connect chat. See on console'); // eslint-disable-line no-alert
+    }
+  }, []);
 
   const handleChangeNewMessage = (e: ChangeEvent<HTMLTextAreaElement>) => {
     setNewMessage(e.target.value);
   };
 
-  const mainChannel = chat?.getMainChannel();
-
-  const mapMessageToState = (id: string): ChatMessage => {
-    const currentTime = new Date();
-    return {
-      createdAt: currentTime.getTime(),
-      key: id,
-      message: {
-        text: newMessage,
-      },
-      sender: {
-        displayName: userName,
-      },
-    };
-  };
-
-  const handleUpdateUserName = async () => {
-    await arenaChat.setUser({
-      id: `${userName}-arena`,
-      name: userName,
-      image: '',
-    });
-  };
+  const isButtonDisabled =
+    loadingChannelMessages || loadingSendMessage || newMessage.length === 0;
 
   const handleSendMessage = async () => {
-    if (mainChannel) {
-      setLoadingSendMessage(true);
-      const newMessageId = await mainChannel.sendMessage({
-        text: newMessage,
-      });
-      const newMessages = messages.concat(mapMessageToState(newMessageId));
-      setMessages(newMessages);
-      setNewMessage('');
-      scrollMessagesToBottom();
-      setLoadingSendMessage(false);
+    if (mainChannelRef.current && !isButtonDisabled) {
+      try {
+        setLoadingSendMessage(true);
+        await mainChannelRef.current.sendMessage({ text: newMessage });
+        setNewMessage('');
 
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 300);
+        setTimeout(() => {
+          inputRef.current?.focus();
+        }, 300);
+      } catch (err) {
+        console.error('Error (send message):', err); // eslint-disable-line no-console
+        alert('Error to send message. See on console'); // eslint-disable-line no-alert
+      } finally {
+        setLoadingSendMessage(false);
+      }
     }
   };
 
@@ -102,70 +122,27 @@ const Chat = () => {
     }
   };
 
-  const handleLikeMsg = async (id: string) => {
-    if (mainChannel) {
+  const handleLikeMsg = async (message: ChatMessage) => {
+    if (mainChannelRef.current) {
       const reactionType = 'love';
 
       const reaction: MessageReaction = {
         type: reactionType,
-        messageID: id,
+        messageID: message.key,
       };
 
-      mainChannel.sendReaction(reaction);
-      const newMessages = messages.map((m) => {
-        if (m.key === id) {
-          return {
-            ...m,
-            currentUserReactions: { love: true },
-          };
-        }
-        return m;
-      });
-      setMessages(newMessages);
+      mainChannelRef.current.sendReaction(reaction);
     }
   };
 
-  const handleDislikeMsg = async (id: string) => {
-    if (mainChannel) {
-      const reactionType = 'love';
+  const userLikedMessage = (message: ChatMessage) => {
+    const isLiked = message.currentUserReactions?.love;
 
-      const reaction: MessageReaction = {
-        type: reactionType,
-        messageID: id,
-      };
-
-      mainChannel.deleteReaction(reaction);
-      const newMessages = messages.map((m) => {
-        if (m.key === id) {
-          return {
-            ...m,
-            currentUserReactions: { love: false },
-          };
-        }
-        return m;
-      });
-      setMessages(newMessages);
-    }
-  };
-
-  const userLikedMessage = (id: string) => {
-    const targetMsg = messages.find((m) => m.key === id);
-    // FIXME: The following object property is return undefined
-    // even when it exists
-    const isLiked = targetMsg?.currentUserReactions?.love;
     if (isLiked) {
       return true;
     }
 
     return false;
-  };
-
-  const handleToggleLikeMsg = (id: string) => {
-    if (userLikedMessage(id)) {
-      handleDislikeMsg(id);
-    } else {
-      handleLikeMsg(id);
-    }
   };
 
   const stringToColor = (string: string) => {
@@ -183,27 +160,23 @@ const Chat = () => {
     lastMsgDate = date.toLocaleString();
   }
 
-  const isButtonDisabled =
-    loading || loadingSendMessage || newMessage.length === 0;
-
   useEffect(() => {
-    fetchChat();
-    const chosenUsername = prompt('Welcome! Please, enter your username:'); // eslint-disable-line no-alert
+    const chosenUsername = 'ARTUR';
     setUserName(chosenUsername || 'Unamed-user-2139');
     inputRef.current?.focus();
   }, []);
 
   useEffect(() => {
-    if (userName.length > 0) {
-      handleUpdateUserName();
-    }
-  }, [userName]);
+    if (userName) {
+      connectChat(userName);
 
-  useEffect(() => {
-    if (chat) {
-      fetchMessages();
+      return () => {
+        removeListeners();
+      };
     }
-  }, [chat]);
+
+    return () => {};
+  }, [userName]);
 
   return (
     <div className="wrapper">
@@ -212,9 +185,12 @@ const Chat = () => {
         <main>
           <section className="channel-container">
             <header>
-              To: {mainChannel && <strong>{mainChannel.channel.name}</strong>}
+              To:{' '}
+              {mainChannelRef.current && (
+                <strong>{mainChannelRef.current.channel.name}</strong>
+              )}
             </header>
-            {loading ? (
+            {loadingChannelMessages ? (
               <div className="loading-container">
                 <div className="loader">
                   <span />
@@ -249,10 +225,10 @@ const Chat = () => {
                         <div className="msg-reaction">
                           <button
                             className={`reaction-button is-liked-${userLikedMessage(
-                              m.key
+                              m
                             )}`}
                             type="button"
-                            onClick={() => handleToggleLikeMsg(m.key)}
+                            onClick={() => handleLikeMsg(m)}
                           >
                             ♥
                           </button>

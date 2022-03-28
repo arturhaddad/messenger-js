@@ -14,6 +14,10 @@ module.exports = {
   },
   plugins: ['react', '@typescript-eslint'],
   rules: {
+    'no-confusing-arrow': 'off',
+    'no-unused-vars': 'warn',
+    'function-paren-newline': 'off',
+    'implicit-arrow-linebreak': 'off',
     'operator-linebreak': 'off',
     'object-curly-newline': 'off',
     'react/jsx-no-useless-fragment': 'off',
