@@ -246,6 +246,64 @@ main {
   font-size: 10px;
 }
 
+.poll-container {
+  position: relative;
+  padding: 18px 20px;
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 10px 0;
+}
+
+.poll-title {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.poll-options-container {
+  display: flex;
+  flex-direction: column;
+  width: 400px;
+}
+
+.poll-option-button {
+  margin-bottom: 7px;
+  border: 1px solid #405d9b;
+  background: none;
+  border-radius: 16px;
+  font-weight: bold;
+  color: #405d9b;
+  font-size: 16px;
+  padding: 4px 0;
+  transition: 0.3s all;
+  cursor: pointer;
+}
+
+.poll-option-button:hover {
+  background: #405d9b;
+  color: #fff;
+}
+
+.poll-option-button:disabled {
+  background: #ddd;
+  cursor: not-allowed;
+}
+
+.poll-option-button:disabled:hover {
+  color: #405d9b;
+}
+
+.poll-option-button:last-child {
+  margin-bottom: 0;
+}
+
+.poll-option-button.poll-option-active-true:disabled {
+  background: #405d9b;
+  color: #fff;
+}
+
 .loading-container {
   flex: 1;
   align-items: center;
@@ -260,6 +318,7 @@ main {
   -webkit-animation: loader-1 3s linear infinite;
   animation: loader-1 3s linear infinite;
 }
+
 @-webkit-keyframes loader-1 {
   0% {
     -webkit-transform: rotate(0deg);
@@ -268,6 +327,7 @@ main {
     -webkit-transform: rotate(360deg);
   }
 }
+
 @keyframes loader-1 {
   0% {
     transform: rotate(0deg);
@@ -276,6 +336,7 @@ main {
     transform: rotate(360deg);
   }
 }
+
 .loader span {
   display: block;
   position: absolute;
@@ -290,6 +351,7 @@ main {
   -webkit-animation: loader-2 1.5s cubic-bezier(0.77, 0, 0.175, 1) infinite;
   animation: loader-2 1.5s cubic-bezier(0.77, 0, 0.175, 1) infinite;
 }
+
 @-webkit-keyframes loader-2 {
   0% {
     -webkit-transform: rotate(0deg);
@@ -298,6 +360,7 @@ main {
     -webkit-transform: rotate(360deg);
   }
 }
+
 @keyframes loader-2 {
   0% {
     transform: rotate(0deg);
@@ -306,7 +369,8 @@ main {
     transform: rotate(360deg);
   }
 }
-.loader span::before {
+
+.loader span:before {
   content: '';
   display: block;
   position: absolute;
@@ -323,6 +387,7 @@ main {
   -webkit-animation: loader-3 1.5s cubic-bezier(0.77, 0, 0.175, 1) infinite;
   animation: loader-3 1.5s cubic-bezier(0.77, 0, 0.175, 1) infinite;
 }
+
 @-webkit-keyframes loader-3 {
   0% {
     -webkit-transform: rotate(0deg);
@@ -331,6 +396,7 @@ main {
     -webkit-transform: rotate(360deg);
   }
 }
+
 @keyframes loader-3 {
   0% {
     transform: rotate(0deg);
@@ -339,7 +405,8 @@ main {
     transform: rotate(360deg);
   }
 }
-.loader span::after {
+
+.loader span:after {
   content: '';
   display: block;
   position: absolute;
@@ -352,4 +419,31 @@ main {
   width: 32px;
   border: 3px solid #405d9b;
   border-radius: 50%;
+}
+
+.loading-poll .loader {
+  width: 16px;
+  height: 16px;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+.loading-poll .loader span {
+  width: 16px;
+  height: 16px;
+  clip: rect(8px, 16px, 16px, 0);
+}
+
+.loading-poll .loader span:before {
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top: 2px solid rgb(0, 0, 0);
+}
+
+.loading-poll .loader span:after {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #405d9b;
 }

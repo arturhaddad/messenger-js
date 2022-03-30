@@ -14,10 +14,12 @@ module.exports = {
   },
   plugins: ['react', '@typescript-eslint'],
   rules: {
+    'no-underscore-dangle': 'off',
     'no-confusing-arrow': 'off',
     'no-unused-vars': 'warn',
     'function-paren-newline': 'off',
     'implicit-arrow-linebreak': 'off',
+    'react/jsx-curly-newline': 'off',
     'operator-linebreak': 'off',
     'object-curly-newline': 'off',
     'react/jsx-no-useless-fragment': 'off',
