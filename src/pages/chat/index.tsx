@@ -249,7 +249,8 @@ const Chat = () => {
     return false;
   };
 
-  const userHasVoted = (poll: Poll) => 'currentUserVote' in poll;
+  const userHasVoted = (poll: Poll) =>
+    !!poll.currentUserVote || poll.currentUserVote === 0;
 
   const isPollLoading = (poll: Poll) => loadingPoll?._id === poll._id;
 
@@ -399,27 +400,25 @@ const Chat = () => {
                         )}
                         <p className="poll-title">{m.poll.question}</p>
                         <div className="poll-options-container">
-                          {Object.keys(m.poll.options).map((_, i) => (
-                            <>
-                              <button
-                                className={`poll-option-button poll-option-active-${
-                                  findPoll(m.poll!)?.currentUserVote === i
-                                }`}
-                                type="button"
-                                onClick={() => handleVote(m.poll!, i)}
-                                key={m.poll?.options[i].name}
-                                disabled={isVoteButtonDisabled(
-                                  findPoll(m.poll!)!
-                                )}
-                              >
-                                {m.poll?.options[i].name} (
-                                {getVotePercentage(
-                                  findPoll(m.poll!)!,
-                                  findPoll(m.poll!)?.options[i].total!
-                                )}
-                                %)
-                              </button>
-                            </>
+                          {Object.keys(m.poll.options).map((key, i) => (
+                            <button
+                              key={key}
+                              className={`poll-option-button poll-option-active-${
+                                findPoll(m.poll!)?.currentUserVote === i
+                              }`}
+                              type="button"
+                              onClick={() => handleVote(m.poll!, i)}
+                              disabled={isVoteButtonDisabled(
+                                findPoll(m.poll!)!
+                              )}
+                            >
+                              {m.poll?.options[i].name} (
+                              {getVotePercentage(
+                                findPoll(m.poll!)!,
+                                findPoll(m.poll!)?.options[i].total!
+                              )}
+                              %)
+                            </button>
                           ))}
                         </div>
                       </div>
