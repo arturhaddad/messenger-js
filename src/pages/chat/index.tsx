@@ -16,8 +16,8 @@ import avatarImg from '../../assets/user-avatar.png';
 import msgPanelImg from '../../assets/new-message-bar.png';
 import tiltIcon from '../../assets/icons/tilt.png';
 
-const CHAT_SLUG = 'intibia';
-const CHAT_CHANNEL_ID = 'intibia-global';
+const CHAT_SLUG = 'novosite';
+const CHAT_CHANNEL_ID = 'CA1MzfE';
 
 const Chat = () => {
   const chatRef = useRef<HTMLDivElement | null>(null);
@@ -25,7 +25,8 @@ const Chat = () => {
   const mainChannelRef = useRef<Channel | null>(null);
   const pollsRef = useRef<BasePolls | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [loadingChannelMessages, setLoadingChannelMessages] = useState(true);
+  const [loadingChat, setLoadingChat] = useState(false);
+  const [loadingChannelMessages, setLoadingChannelMessages] = useState(false);
   const [loadingSendMessage, setLoadingSendMessage] = useState(false);
   const [loadingPoll, setLoadingPoll] = useState<Poll | null>(null);
   const [newMessage, setNewMessage] = useState('');
@@ -134,6 +135,7 @@ const Chat = () => {
 
   const connectChat = useCallback(async (username: string) => {
     try {
+      setLoadingChat(true);
       const arenaChat = new ArenaChat(CHAT_SLUG);
       await arenaChat.setUser({
         id: `${username}-arena`,
@@ -151,6 +153,9 @@ const Chat = () => {
     } catch (err) {
       console.error('Error (connect chat):', err); // eslint-disable-line no-console
       alert('Error to connect chat. See on console'); // eslint-disable-line no-alert
+    } finally {
+      setLoadingChat(false);
+      scrollMessagesToBottom();
     }
   }, []);
 
@@ -159,7 +164,10 @@ const Chat = () => {
   };
 
   const isButtonDisabled =
-    loadingChannelMessages || loadingSendMessage || newMessage.length === 0;
+    loadingChat ||
+    loadingChannelMessages ||
+    loadingSendMessage ||
+    newMessage.length === 0;
 
   const handleSendMessage = async () => {
     if (mainChannelRef.current && !isButtonDisabled) {
@@ -308,6 +316,8 @@ const Chat = () => {
     return roundPercentage;
   };
 
+  const showLoadingScreen = loadingChat || loadingChannelMessages;
+
   useEffect(() => {
     const chosenUsername = prompt('Please, enter a username:'); // eslint-disable-line no-alert
     setUserName(chosenUsername || 'Unamed-user-2139');
@@ -338,7 +348,7 @@ const Chat = () => {
                 <strong>{mainChannelRef.current.channel.name}</strong>
               )}
             </header>
-            {loadingChannelMessages ? (
+            {showLoadingScreen ? (
               <div className="loading-container">
                 <div className="loader">
                   <span />
