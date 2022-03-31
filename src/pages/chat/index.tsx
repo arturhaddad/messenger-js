@@ -395,7 +395,7 @@ const Chat = () => {
                         </div>
                       </div>
                     )}
-                    {m.poll && (
+                    {m.poll && findPoll(m.poll) && (
                       <div
                         className={`poll-container poll-loading-${isPollLoading(
                           m.poll
