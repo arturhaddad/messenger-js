@@ -10,28 +10,37 @@ import React, {
 } from 'react';
 import { ChatMessage } from '@arena-im/chat-types/dist/chat-message';
 import { BasePolls, Poll } from '@arena-im/chat-types/dist/polls';
-import { MessageReaction } from '@arena-im/chat-types';
+import { BaseQna, MessageReaction, QnaQuestion } from '@arena-im/chat-types';
 import { Channel } from '@arena-im/chat-sdk/dist/channel/channel';
 import avatarImg from '../../assets/user-avatar.png';
-import msgPanelImg from '../../assets/new-message-bar.png';
 import tiltIcon from '../../assets/icons/tilt.png';
+import qnaIcon from '../../assets/icons/qna.png';
+import msgIcon from '../../assets/icons/msg.png';
 
 const CHAT_SLUG = 'novosite';
 const CHAT_CHANNEL_ID = 'CA1MzfE';
+
+// FIXME: This must be typed in the SDK library and shall be removed
+// from here when it's updated
+interface FixedChatMessage extends ChatMessage {
+  question?: QnaQuestion;
+}
 
 const Chat = () => {
   const chatRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const mainChannelRef = useRef<Channel | null>(null);
   const pollsRef = useRef<BasePolls | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const qnaRef = useRef<BaseQna | null>(null);
+  const [messages, setMessages] = useState<FixedChatMessage[]>([]);
   const [loadingChat, setLoadingChat] = useState(false);
   const [loadingChannelMessages, setLoadingChannelMessages] = useState(false);
   const [loadingSendMessage, setLoadingSendMessage] = useState(false);
   const [loadingPoll, setLoadingPoll] = useState<Poll | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [userName, setUserName] = useState('');
-  const [pollsList, setPollsList] = useState<Poll[] | null>(null);
+  const [polls, setPolls] = useState<Poll[] | null>(null);
+  const [qnaMode, setQnaMode] = useState(false);
 
   const scrollMessagesToBottom = () => {
     if (chatRef.current) {
@@ -64,17 +73,29 @@ const Chat = () => {
         const pollsInstance = await mainChannelRef.current.getPollsInstance(
           userId
         );
-        const newPollsList = await pollsInstance.loadPolls();
+        const newPolls = await pollsInstance.loadPolls();
         pollsRef.current = pollsInstance;
-        setPollsList(newPollsList);
+        setPolls(newPolls);
       } catch (err) {
         console.error('Error (load polls):', err); // eslint-disable-line no-console
         alert('Error to load polls. See on console'); // eslint-disable-line no-alert
         pollsRef.current = null;
-        setPollsList(null);
+        setPolls(null);
       }
     }
   }, [userName]);
+
+  const handleLoadQnaInstance = useCallback(async () => {
+    if (mainChannelRef.current) {
+      try {
+        const qnaInstance = await mainChannelRef.current.getChatQnaInstance();
+
+        qnaRef.current = qnaInstance;
+      } catch (err) {
+        qnaRef.current = null;
+      }
+    }
+  }, []);
 
   const startListeners = useCallback(() => {
     if (mainChannelRef.current) {
@@ -107,13 +128,11 @@ const Chat = () => {
 
     if (pollsRef.current) {
       pollsRef.current.onPollReceived((poll) => {
-        setPollsList((oldValues) =>
-          oldValues ? [poll, ...oldValues] : [poll]
-        );
+        setPolls((oldValues) => (oldValues ? [poll, ...oldValues] : [poll]));
       });
 
       pollsRef.current.onPollModified((poll) => {
-        setPollsList(
+        setPolls(
           (oldValues) =>
             oldValues?.map((item) => (item._id === poll._id ? poll : item)) ||
             null
@@ -121,7 +140,7 @@ const Chat = () => {
       });
 
       pollsRef.current.onPollDeleted((poll) => {
-        setPollsList(
+        setPolls(
           (oldValues) =>
             oldValues?.filter((item) => poll._id !== item._id) || null
         );
@@ -147,6 +166,7 @@ const Chat = () => {
       mainChannelRef.current = liveChatConnection.getMainChannel();
 
       await handleLoadPolls();
+      await handleLoadQnaInstance();
       await handleLoadMessages();
 
       startListeners();
@@ -188,10 +208,40 @@ const Chat = () => {
     }
   };
 
+  const handleSendQuestion = async () => {
+    if (qnaRef.current && !isButtonDisabled) {
+      try {
+        setLoadingSendMessage(true);
+        await qnaRef.current.addQuestion(newMessage);
+        setNewMessage('');
+        setQnaMode(false);
+
+        // eslint-disable-next-line no-alert
+        alert(
+          'Your question has been sent and will be displayed when a moderator answers.'
+        );
+
+        setTimeout(() => {
+          inputRef.current?.focus();
+        }, 300);
+      } catch (err) {
+        console.error('Error (send question):', err); // eslint-disable-line no-console
+        alert('Error to send question. See on console'); // eslint-disable-line no-alert
+      } finally {
+        setLoadingSendMessage(false);
+      }
+    }
+  };
+
   const handleSubmitKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>): void => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      handleSendMessage();
+
+      if (qnaMode) {
+        handleSendQuestion();
+      } else {
+        handleSendMessage();
+      }
     }
   };
 
@@ -287,6 +337,11 @@ const Chat = () => {
     }
   };
 
+  const handleToggleQnaMode = () => {
+    setQnaMode(!qnaMode);
+    inputRef.current?.focus();
+  };
+
   const stringToColor = (string: string) => {
     const stringUniqueHash = [...string].reduce(
       (acc, char) => char.charCodeAt(0) + ((acc << 5) - acc), // eslint-disable-line no-bitwise
@@ -302,7 +357,7 @@ const Chat = () => {
     lastMsgDate = date.toLocaleString();
   }
 
-  const findPoll = (poll: Poll) => pollsList?.find((p) => p._id === poll._id);
+  const findPoll = (poll: Poll) => polls?.find((p) => p._id === poll._id);
   const getVotePercentage = (poll: Poll, votes: number) => {
     if (poll.total === 0) {
       const optionsQty = Object.keys(poll.options).length;
@@ -433,6 +488,24 @@ const Chat = () => {
                         </div>
                       </div>
                     )}
+                    {m.question && (
+                      <div className="qna-container">
+                        <img className="qna-icon" src={qnaIcon} alt="" />
+                        <div className="qna-question-wrapper">
+                          <div className="qna-question-container">
+                            <p className="qna-question-author">
+                              {m.question.sender.name}
+                            </p>
+                            <p className="qna-question-text">
+                              {m.question.text}
+                            </p>
+                          </div>
+                        </div>
+                        <p className="qna-answer-text">
+                          {m.question.answer.text}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -441,12 +514,22 @@ const Chat = () => {
           <section className="user-container">
             <div className="new-message">
               <header>
-                <img src={msgPanelImg} alt="" />
-                <button type="button" className="tilt-button">
+                <button type="button" className="new-message-bar-button">
                   <img src={tiltIcon} alt="" />
                 </button>
+                <button
+                  type="button"
+                  className="new-message-bar-button"
+                  onClick={handleToggleQnaMode}
+                >
+                  <img
+                    src={qnaMode ? msgIcon : qnaIcon}
+                    title={qnaMode ? 'Write a message' : 'Ask a question'}
+                    alt=""
+                  />
+                </button>
               </header>
-              <div className="input-container">
+              <div className={`input-container qna-mode-${qnaMode}`}>
                 <textarea
                   value={newMessage}
                   onChange={handleChangeNewMessage}
@@ -456,11 +539,12 @@ const Chat = () => {
                   style={{ color: stringToColor(userName) }}
                 />
                 <button
+                  className="send-message-button"
                   type="button"
                   disabled={isButtonDisabled}
-                  onClick={handleSendMessage}
+                  onClick={qnaMode ? handleSendQuestion : handleSendMessage}
                 >
-                  Send
+                  {qnaMode ? 'Ask' : 'Send'}
                 </button>
               </div>
               <footer>
