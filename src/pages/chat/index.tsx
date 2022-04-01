@@ -13,9 +13,11 @@ import { BasePolls, Poll } from '@arena-im/chat-types/dist/polls';
 import { BaseQna, MessageReaction, QnaQuestion } from '@arena-im/chat-types';
 import { Channel } from '@arena-im/chat-sdk/dist/channel/channel';
 import avatarImg from '../../assets/user-avatar.png';
-import tiltIcon from '../../assets/icons/tilt.png';
+import pollIcon from '../../assets/icons/poll.png';
+import fontIcon from '../../assets/icons/font.png';
 import qnaIcon from '../../assets/icons/qna.png';
 import msgIcon from '../../assets/icons/msg.png';
+import { slugify } from '../../helpers';
 
 const CHAT_SLUG = 'novosite';
 const CHAT_CHANNEL_ID = 'CA1MzfE';
@@ -37,10 +39,12 @@ const Chat = () => {
   const [loadingChannelMessages, setLoadingChannelMessages] = useState(false);
   const [loadingSendMessage, setLoadingSendMessage] = useState(false);
   const [loadingPoll, setLoadingPoll] = useState<Poll | null>(null);
+  const [loadingPolls, setLoadingPolls] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   const [userName, setUserName] = useState('');
   const [polls, setPolls] = useState<Poll[] | null>(null);
   const [qnaMode, setQnaMode] = useState(false);
+  const [currentTab, setCurrentTab] = useState('messages');
 
   const scrollMessagesToBottom = () => {
     if (chatRef.current) {
@@ -69,7 +73,8 @@ const Chat = () => {
   const handleLoadPolls = useCallback(async () => {
     if (mainChannelRef.current) {
       try {
-        const userId = `${userName}-arena`;
+        setLoadingPolls(true);
+        const userId = slugify(`${userName}-arena`);
         const pollsInstance = await mainChannelRef.current.getPollsInstance(
           userId
         );
@@ -81,6 +86,8 @@ const Chat = () => {
         alert('Error to load polls. See on console'); // eslint-disable-line no-alert
         pollsRef.current = null;
         setPolls(null);
+      } finally {
+        setLoadingPolls(false);
       }
     }
   }, [userName]);
@@ -157,7 +164,7 @@ const Chat = () => {
       setLoadingChat(true);
       const arenaChat = new ArenaChat(CHAT_SLUG);
       await arenaChat.setUser({
-        id: `${username}-arena`,
+        id: slugify(`${username}-arena`),
         name: username,
         image: '',
       });
@@ -337,10 +344,25 @@ const Chat = () => {
     }
   };
 
-  const handleToggleQnaMode = () => {
-    setQnaMode(!qnaMode);
+  const handleEnableQnaMode = () => {
+    setCurrentTab('messages');
+    setQnaMode(true);
     inputRef.current?.focus();
   };
+
+  const handleDisableQnaMode = () => {
+    setCurrentTab('messages');
+    setQnaMode(false);
+    inputRef.current?.focus();
+  };
+
+  const handleChangeTab = (tab: string) => {
+    setCurrentTab(tab);
+  };
+
+  useEffect(() => {
+    scrollMessagesToBottom();
+  }, [currentTab]);
 
   const stringToColor = (string: string) => {
     const stringUniqueHash = [...string].reduce(
@@ -410,121 +432,196 @@ const Chat = () => {
                 </div>
               </div>
             ) : (
-              <div className="messages-container" ref={chatRef}>
-                {messages.map((m) => (
-                  <div className="msg-wrapper" key={m.key}>
-                    {m.message && (
-                      <div className="msg">
-                        <div>
-                          <p className="msg-author">
-                            {m.sender.displayName} says:
-                          </p>
-                          <div className="msg-content">
-                            <p
-                              style={{
-                                color: stringToColor(
-                                  m.sender.displayName || ''
-                                ),
-                              }}
-                            >
-                              {m.message.text}
-                            </p>
-                            {m.message.media && (
-                              <img src={m.message.media.url} alt="" />
-                            )}
-                          </div>
-                        </div>
-                        <div className="msg-reaction">
-                          <button
-                            className={`reaction-button is-liked-${userHasLikedMsg(
-                              m
-                            )}`}
-                            type="button"
-                            onClick={() => handleToggleLikeMsg(m)}
-                          >
-                            <span className="msg-reaction-icon">♥</span>
-                            <span className="msg-reaction-counter">
-                              {m.reactions?.like || '0'}
-                            </span>
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                    {m.poll && findPoll(m.poll) && (
-                      <div
-                        className={`poll-container poll-loading-${isPollLoading(
-                          m.poll
-                        )}`}
-                      >
-                        {isPollLoading(m.poll) && (
-                          <div className="loading-container loading-poll">
-                            <div className="loader">
-                              <span />
+              <>
+                <div className="messages-container" ref={chatRef}>
+                  {currentTab === 'messages' && (
+                    <>
+                      {messages.map((m) => (
+                        <div className="msg-wrapper" key={m.key}>
+                          {m.message && (
+                            <div className="msg">
+                              <div>
+                                <p className="msg-author">
+                                  {m.sender.displayName} says:
+                                </p>
+                                <div className="msg-content">
+                                  <p
+                                    style={{
+                                      color: stringToColor(
+                                        m.sender.displayName || ''
+                                      ),
+                                    }}
+                                  >
+                                    {m.message.text}
+                                  </p>
+                                  {m.message.media && (
+                                    <img src={m.message.media.url} alt="" />
+                                  )}
+                                </div>
+                              </div>
+                              <div className="msg-reaction">
+                                <button
+                                  className={`reaction-button is-liked-${userHasLikedMsg(
+                                    m
+                                  )}`}
+                                  type="button"
+                                  onClick={() => handleToggleLikeMsg(m)}
+                                >
+                                  <span className="msg-reaction-icon">♥</span>
+                                  <span className="msg-reaction-counter">
+                                    {m.reactions?.like || '0'}
+                                  </span>
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        )}
-                        <p className="poll-title">{m.poll.question}</p>
-                        <div className="poll-options-container">
-                          {Object.keys(m.poll.options).map((key, i) => (
-                            <button
-                              key={key}
-                              className={`poll-option-button poll-option-active-${
-                                findPoll(m.poll!)?.currentUserVote === i
-                              }`}
-                              type="button"
-                              onClick={() => handleVote(m.poll!, i)}
-                              disabled={isVoteButtonDisabled(
-                                findPoll(m.poll!)!
-                              )}
+                          )}
+                          {m.poll && findPoll(m.poll) && (
+                            <div
+                              className={`poll-container poll-loading-${isPollLoading(
+                                m.poll
+                              )}`}
                             >
-                              {m.poll?.options[i].name} (
-                              {getVotePercentage(
-                                findPoll(m.poll!)!,
-                                findPoll(m.poll!)?.options[i].total!
+                              {isPollLoading(m.poll) && (
+                                <div className="loading-container loading-poll">
+                                  <div className="loader">
+                                    <span />
+                                  </div>
+                                </div>
                               )}
-                              %)
-                            </button>
+                              <p className="poll-title">{m.poll.question}</p>
+                              <div className="poll-options-container">
+                                {Object.keys(m.poll.options).map((key, i) => (
+                                  <button
+                                    key={key}
+                                    className={`poll-option-button poll-option-active-${
+                                      findPoll(m.poll!)?.currentUserVote === i
+                                    }`}
+                                    type="button"
+                                    onClick={() => handleVote(m.poll!, i)}
+                                    disabled={isVoteButtonDisabled(
+                                      findPoll(m.poll!)!
+                                    )}
+                                  >
+                                    {m.poll?.options[i].name} (
+                                    {getVotePercentage(
+                                      findPoll(m.poll!)!,
+                                      findPoll(m.poll!)?.options[i].total!
+                                    )}
+                                    %)
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {m.question && (
+                            <div className="qna-container">
+                              <button
+                                type="button"
+                                className="qna-icon-button"
+                                onClick={handleEnableQnaMode}
+                              >
+                                <img
+                                  className="qna-icon"
+                                  src={qnaIcon}
+                                  alt=""
+                                />
+                              </button>
+                              <div className="qna-question-wrapper">
+                                <div className="qna-question-container">
+                                  <p className="qna-question-author">
+                                    {m.question.sender.name}
+                                  </p>
+                                  <p className="qna-question-text">
+                                    {m.question.text}
+                                  </p>
+                                </div>
+                              </div>
+                              <p className="qna-answer-text">
+                                {m.question.answer.text}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  {currentTab === 'polls' && (
+                    <>
+                      {polls && polls.length > 0 ? (
+                        <>
+                          {polls.map((p) => (
+                            <div
+                              className={`poll-container poll-loading-${isPollLoading(
+                                p
+                              )}`}
+                              key={p._id}
+                            >
+                              {isPollLoading(p) && (
+                                <div className="loading-container loading-poll">
+                                  <div className="loader">
+                                    <span />
+                                  </div>
+                                </div>
+                              )}
+                              <p className="poll-title">{p.question}</p>
+                              <div className="poll-options-container">
+                                {Object.keys(p.options).map((key, i) => (
+                                  <button
+                                    key={key}
+                                    className={`poll-option-button poll-option-active-${
+                                      p.currentUserVote === i
+                                    }`}
+                                    type="button"
+                                    onClick={() => handleVote(p, i)}
+                                    disabled={isVoteButtonDisabled(p)}
+                                  >
+                                    {p.options[i].name} (
+                                    {getVotePercentage(p, p.options[i].total)}%)
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
                           ))}
-                        </div>
-                      </div>
-                    )}
-                    {m.question && (
-                      <div className="qna-container">
-                        <img className="qna-icon" src={qnaIcon} alt="" />
-                        <div className="qna-question-wrapper">
-                          <div className="qna-question-container">
-                            <p className="qna-question-author">
-                              {m.question.sender.name}
-                            </p>
-                            <p className="qna-question-text">
-                              {m.question.text}
-                            </p>
-                          </div>
-                        </div>
-                        <p className="qna-answer-text">
-                          {m.question.answer.text}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+                        </>
+                      ) : (
+                        <p>There are no polls yet.</p>
+                      )}
+                    </>
+                  )}
+                </div>
+              </>
             )}
           </section>
           <section className="user-container">
             <div className="new-message">
               <header>
-                <button type="button" className="new-message-bar-button">
-                  <img src={tiltIcon} alt="" />
-                </button>
+                {currentTab === 'messages' && (
+                  <button
+                    type="button"
+                    className="new-message-bar-button"
+                    onClick={() => handleChangeTab('polls')}
+                    disabled={loadingPolls}
+                  >
+                    <img src={pollIcon} alt="" title="See all polls" />
+                  </button>
+                )}
+                {currentTab === 'polls' && (
+                  <button
+                    type="button"
+                    className="new-message-bar-button"
+                    onClick={() => handleChangeTab('messages')}
+                  >
+                    <img src={fontIcon} alt="" title="See all messages" />
+                  </button>
+                )}
                 <button
                   type="button"
                   className="new-message-bar-button"
-                  onClick={handleToggleQnaMode}
+                  onClick={qnaMode ? handleDisableQnaMode : handleEnableQnaMode}
                 >
                   <img
                     src={qnaMode ? msgIcon : qnaIcon}
-                    title={qnaMode ? 'Write a message' : 'Ask a question'}
+                    title={qnaMode ? '' : 'Ask a question'}
                     alt=""
                   />
                 </button>
@@ -537,15 +634,28 @@ const Chat = () => {
                   ref={inputRef}
                   disabled={loadingSendMessage}
                   style={{ color: stringToColor(userName) }}
+                  placeholder={qnaMode ? 'Type your question...' : ''}
                 />
-                <button
-                  className="send-message-button"
-                  type="button"
-                  disabled={isButtonDisabled}
-                  onClick={qnaMode ? handleSendQuestion : handleSendMessage}
-                >
-                  {qnaMode ? 'Ask' : 'Send'}
-                </button>
+                <div className="message-buttons-container">
+                  <button
+                    className="send-message-button"
+                    type="button"
+                    disabled={isButtonDisabled}
+                    onClick={qnaMode ? handleSendQuestion : handleSendMessage}
+                  >
+                    {qnaMode ? 'Ask' : 'Send'}
+                  </button>
+                  {qnaMode && (
+                    <button
+                      className="cancel-question-button"
+                      type="button"
+                      onClick={handleDisableQnaMode}
+                      disabled={loadingSendMessage}
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
               </div>
               <footer>
                 <time>

@@ -90,6 +90,10 @@ main {
   cursor: pointer;
 }
 
+.new-message-bar-button img {
+  height: 16px;
+}
+
 .new-message-bar-button:last-child {
   margin-right: 0;
 }
@@ -123,6 +127,8 @@ main {
   outline: none;
   font-family: Verdana, Tahoma, Arial, sans-serif;
   font-size: 14px;
+  resize: vertical;
+  min-height: 68px;
 }
 
 .input-container.qna-mode-true textarea {
@@ -134,9 +140,14 @@ main {
   background-color: #ddd;
 }
 
-.send-message-button {
+.message-buttons-container {
   position: absolute;
   right: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.send-message-button {
   background: #fff;
   border: 1px solid #4a68a4;
   appearance: none;
@@ -144,8 +155,25 @@ main {
   font-size: 11px;
   color: #405d9b;
   font-family: Verdana, Tahoma, Arial, sans-serif;
-  width: 52px;
+  width: 58px;
   height: 38px;
+  border-radius: 6px;
+  box-shadow: inset -2px -2px 4px 0px #8fa0c4;
+  transition: 0.2s all;
+  cursor: pointer;
+  margin-bottom: 2px;
+}
+
+.cancel-question-button {
+  background: #fff;
+  border: 1px solid #4a68a4;
+  appearance: none;
+  font-weight: bold;
+  font-size: 10px;
+  color: #405d9b;
+  font-family: Verdana, Tahoma, Arial, sans-serif;
+  width: 58px;
+  height: 19px;
   border-radius: 6px;
   box-shadow: inset -2px -2px 4px 0px #8fa0c4;
   transition: 0.2s all;
@@ -459,9 +487,10 @@ main {
 }
 
 .qna-container {
-  background: #215046;
-  padding: 15px;
-  border-radius: 6px;
+  box-shadow: 0 1px 0.5px rgb(11 20 26 / 13%);
+  background-color: #d9fdd3;
+  padding: 9px;
+  border-radius: 8px;
   display: flex;
   flex-direction: column;
   margin: 10px 6px;
@@ -469,7 +498,12 @@ main {
   position: relative;
 }
 
-.qna-icon {
+.qna-icon-button {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
   position: absolute;
   right: -5px;
   top: -5px;
@@ -481,26 +515,26 @@ main {
 }
 
 .qna-question-container {
-  background-color: #173c35;
-  border-left: 3px solid #c49d34;
-  padding: 8px 13px;
+  background-color: #d1f4cc;
+  border-left: 3px solid #06cf9c;
+  padding: 8px 10px;
 }
 
 .qna-question-author {
   margin: 0;
   font-weight: bold;
-  color: #927525;
+  color: #00a884;
 }
 
 .qna-question-text {
   margin: 0;
-  color: #b0b1b6;
+  color: #667781;
 }
 
 .qna-answer-text {
-  color: #fff;
+  color: #3b4a54;
   font-weight: bold;
   font-size: 12px;
   line-height: 17px;
-  margin: 10px 0 0;
+  margin: 8px 0 0;
 }
